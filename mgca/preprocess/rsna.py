@@ -77,7 +77,7 @@ def prepare_detection_pkl(df, path):
             bboxs.append(y)
 
     filenames = np.array(filenames)
-    bboxs = np.array(bboxs)
+    bboxs = np.array(bboxs, dtype=object)
 
     with open(path, "wb") as f:
         pickle.dump([filenames, bboxs], f)
@@ -128,5 +128,5 @@ def prepare_detection_data():
 
 
 if __name__ == "__main__":
-    # preprocess_rsna_data()
+    preprocess_rsna_data()
     prepare_detection_data()

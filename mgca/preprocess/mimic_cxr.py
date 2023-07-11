@@ -1,9 +1,10 @@
+import numpy as np
 import pandas as pd
 from mgca.constants import *
 from mgca.preprocess.utils import extract_mimic_text
 
 
-extract_text = False
+extract_text = True
 
 np.random.seed(42)
 

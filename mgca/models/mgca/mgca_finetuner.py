@@ -26,8 +26,10 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 def cli_main():
     parser = ArgumentParser()
     parser.add_argument("--dataset", type=str, default="chexpert")
-    parser.add_argument("--path", type=str,
-                        default="/home/r15user2/Documents/MGCA/checkpoints/mgca/epoch=20-step=33137.ckpt")
+    # parser.add_argument("--path", type=str, default="/home/r15user2/Documents/MGCA/checkpoints/mgca/epoch=20-step=33137.ckpt")
+    # parser.add_argument("--path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/resnet_50.ckpt")
+    # parser.add_argument("--path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/4.922432_10_621951.pth")
+    parser.add_argument("--path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/4.959988_13_543701.pth")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=48)
     parser.add_argument("--num_workers", type=int, default=16)
@@ -65,7 +67,10 @@ def cli_main():
         raise RuntimeError(f"no dataset called {args.dataset}")
 
     if args.path:
-        model = MGCA.load_from_checkpoint(args.path, strict=False)
+        # model = MGCA.load_from_checkpoint(args.path, strict=False)
+        model = MGCA(img_encoder="resnet_50")
+        model.load_state_dict(torch.load(args.path)["model"])
+        # model.load_state_dict(torch.load(args.path)["model"],strict=False)
     else:
         model = MGCA()
 

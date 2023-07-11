@@ -141,3 +141,10 @@ __pycache__
 *.svg
 *.eps
 *.pth
+
+out/*
+*.pyc
+.*.swp
+*.csv
+
+.idea/

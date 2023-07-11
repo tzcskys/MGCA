@@ -27,8 +27,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 def cli_main():
     parser = ArgumentParser("Finetuning of object detection task for MGCA")
     parser.add_argument("--base_model", type=str, default="resnet_50")
-    parser.add_argument("--ckpt_path", type=str,
-                        default="/home/r15user2/Documents/MGCA/checkpoints/mgca/resnet_50.ckpt")
+    # parser.add_argument("--ckpt_path", type=str, default="/home/r15user2/Documents/MGCA/checkpoints/mgca/resnet_50.ckpt")
+    parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/resnet_50.ckpt")
     parser.add_argument("--dataset", type=str,
                         default="rsna", help="rsna or object_cxr")
     parser.add_argument("--seed", type=int, default=42)

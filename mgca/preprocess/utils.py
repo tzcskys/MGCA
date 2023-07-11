@@ -7,7 +7,7 @@ from pathlib import Path
 from tqdm import tqdm
 from mgca.constants import MIMIC_CXR_DATA_DIR
 
-reports_path = MIMIC_CXR_DATA_DIR / "files"
+reports_path = MIMIC_CXR_DATA_DIR / "text_files"
 output_path = MIMIC_CXR_DATA_DIR
 no_split = True
 

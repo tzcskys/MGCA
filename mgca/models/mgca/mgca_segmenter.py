@@ -28,8 +28,8 @@ def cli_main():
         "Finetuning of semantic segmentation task for MGCA")
     parser.add_argument("--base_model", type=str,
                         default="resnet50", help="resnet50 or vit")
-    parser.add_argument("--ckpt_path", type=str,
-                        default="/home/r15user2/Documents/MGCA/checkpoints/mgca/resnet_50.ckpt")
+    # parser.add_argument("--ckpt_path", type=str, default="/home/r15user2/Documents/MGCA/checkpoints/mgca/resnet_50.ckpt")
+    parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/resnet_50.ckpt")
     parser.add_argument("--dataset", type=str, default="siim")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=8)
@@ -42,6 +42,7 @@ def cli_main():
 
     # args.deterministic = True
     args.max_epochs = 50
+    args.accelerator = "gpu"
 
     seed_everything(args.seed)
 

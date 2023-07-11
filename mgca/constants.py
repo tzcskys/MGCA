@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 DATA_BASE_DIR = os.path.join(os.path.dirname(
-    os.path.abspath(__file__)), "../../data")
+    os.path.abspath(__file__)), "../../../data")
 DATA_BASE_DIR = Path(DATA_BASE_DIR)
 # #############################################
 # CheXpert constants
@@ -221,7 +221,7 @@ PNEUMOTHORAX_TRAIN_PCT = 0.7
 
 
 # #############################################
-# tuberculosis constants
+# COVIDx constants
 # #############################################
 COVIDX_DATA_DIR = DATA_BASE_DIR / "COVIDx"
 # COVIDX_ORIGINAL_TRAIN_TXT = COVIDX_DATA_DIR / "train.txt"
@@ -233,7 +233,7 @@ COVIDX_VALID_CSV = COVIDX_DATA_DIR / "valid.csv"
 COVIDX_TEST_CSV = COVIDX_DATA_DIR / "test.csv"
 
 # #############################################
-# COVIDx constants
+# tuberculosis constants
 # #############################################
 TUBERCULOSIS_DATA_DIR = DATA_BASE_DIR / "tuberculosis"
 TUBERCULOSIS_ORIGINAL_TRAIN_CSV = TUBERCULOSIS_DATA_DIR / "shenzhen_metadata.csv"
