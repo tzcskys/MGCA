@@ -11,13 +11,15 @@ class DataTransforms(object):
             data_transforms = [
                 transforms.RandomCrop(crop_size),
                 transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5,  0.5, 0.5))
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) # this is the raw mean and std for MGCA based pre-trained models
+                # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)) # this is the mean and std for my vilmeidc based pre-trained models
             ]
         else:
             data_transforms = [
                 transforms.CenterCrop(crop_size),
                 transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) # this is the raw mean and std for MGCA based pre-trained models
+                # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)) # this is the mean and std for my vilmeidc based pre-trained models
             ]
 
         self.data_transforms = transforms.Compose(data_transforms)
@@ -42,12 +44,14 @@ class DetectionDataTransforms(object):
 
             data_transforms = [
                 transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) # this is the raw mean and std for MGCA based pre-trained models
+                # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)) # this is the mean and std for my vilmeidc based pre-trained models
             ]
         else:
             data_transforms = [
                 transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) # this is the raw mean and std for MGCA based pre-trained models
+                # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)) # this is the mean and std for my vilmeidc based pre-trained models
             ]
 
         self.data_transforms = transforms.Compose(data_transforms)
@@ -69,7 +73,8 @@ class Moco2Transform(object):
                     transforms.RandomApply([GaussianBlur([0.1, 2.0])], p=0.5),
                     transforms.RandomHorizontalFlip(),
                     transforms.ToTensor(),
-                    transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) # this is the raw mean and std for MGCA based pre-trained models
+                    # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)) # this is the mean and std for my vilmeidc based pre-trained models
                 ]
             )
         else:
@@ -77,7 +82,8 @@ class Moco2Transform(object):
                 [
                     transforms.CenterCrop(crop_size),
                     transforms.ToTensor(),
-                    transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) # this is the raw mean and std for MGCA based pre-trained models
+                    # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)) # this is the mean and std for my vilmeidc based pre-trained models
                 ]
             )
 
