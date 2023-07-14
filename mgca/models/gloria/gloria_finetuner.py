@@ -267,7 +267,7 @@ def cli_main():
     parser = ArgumentParser()
     parser.add_argument("--dataset", type=str, default="chexpert")
     parser.add_argument("--path", type=str,
-                        default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/6.162008_15_347547.pth")
+                        default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/3.811652_16_644792.pth")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=48)
     parser.add_argument("--num_workers", type=int, default=16)
@@ -307,12 +307,13 @@ def cli_main():
 
     if args.path:
         # model = GLoRIA.load_from_checkpoint(args.path, strict=False)
-        model = build_model("ViT-B/32")
+        model = build_model("ViT-B/16")
 
         state_dict = torch.load(args.path)
         # the vision_encoder.ln_final, vision_encoder.token_embedding, vision_encoder.positional_embedding are not used since it is used by m3ae for text, no relation to the img
         # but the vision_encoder.visual.positional_embedding is used
-        params = {re.sub('^vision_encoder.visual.', '', k): v for k, v in state_dict["model"].items()}
+        # params = {re.sub('^vision_encoder.visual.', '', k): v for k, v in state_dict["model"].items()} # this is for m3ae gloria pre-trained model
+        params = {re.sub('^module.vision_encoder.visual.', '', k): v for k, v in state_dict["model"].items()} # this is for m3ae MST pre-trained model
         params = {k: v for k, v in params.items() if k in model.state_dict()}
         model.load_state_dict(params, strict=True)
     else:
