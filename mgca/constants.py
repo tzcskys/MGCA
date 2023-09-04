@@ -3,12 +3,12 @@ from pathlib import Path
 
 
 DATA_BASE_DIR = os.path.join(os.path.dirname(
-    os.path.abspath(__file__)), "../../../data")
+    os.path.abspath(__file__)), "../../../data_SSD")
 DATA_BASE_DIR = Path(DATA_BASE_DIR)
 # #############################################
 # CheXpert constants
 # #############################################
-CHEXPERT_DATA_DIR = DATA_BASE_DIR / "CheXpert-v1.0"
+CHEXPERT_DATA_DIR = DATA_BASE_DIR / "CheXpert/chexpertchestxrays-u20210408/CheXpert-v1.0"
 CHEXPERT_ORIGINAL_TRAIN_CSV = CHEXPERT_DATA_DIR / "train.csv"
 CHEXPERT_TRAIN_CSV = CHEXPERT_DATA_DIR / \
     "train_split.csv"  # train split from train.csv
@@ -174,7 +174,7 @@ CHEXPERT_CLASS_PROMPTS = {
 # #############################################
 # MIMIC-CXR-JPG constants
 # #############################################
-MIMIC_CXR_DATA_DIR = DATA_BASE_DIR / "raw/physionet.org/files/mimic-cxr-jpg/2.0.0"
+MIMIC_CXR_DATA_DIR = DATA_BASE_DIR / "MIMIC-CXR-JPG"
 # MIMIC_CXR_TRAIN_TXT = MIMIC_CXR_DATA_DIR / "train.txt"
 # MIMIC_CXR_VALID_TXT = MIMIC_CXR_DATA_DIR / "test.txt"
 MIMIC_CXR_CHEXPERT_CSV = MIMIC_CXR_DATA_DIR / "mimic-cxr-2.0.0-chexpert.csv"

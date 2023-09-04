@@ -197,6 +197,27 @@ class VisionTransformer(nn.Module):
 
         return x
 
+    # def forward_patch_embed(self, x):
+    #     # from m3ae, adding pos_embed is done outside with random_masking()
+    #     B = x.shape[0]
+    #     x = self.patch_embed(x)
+    #
+    #     # stole cls_tokens impl from Phil Wang, thanks
+    #     cls_tokens = self.cls_token.expand(B, -1, -1)
+    #     x = torch.cat((cls_tokens, x), dim=1)
+    #
+    #     return x
+    #
+    # def forward_trans(self, x, register_blk=-1):
+    #     # from m3ae
+    #     x = self.pos_drop(x)
+    #
+    #     for i, blk in enumerate(self.blocks):
+    #         x = blk(x, register_blk == i)
+    #     x = self.norm(x)
+    #
+    #     return x
+
     @torch.jit.ignore()
     def load_pretrained(self, checkpoint_path, prefix=''):
         _load_weights(self, checkpoint_path, prefix)
