@@ -39,7 +39,7 @@ class SIIMImageDataset(BaseImageDataset):
             lambda x: os.path.join(PNEUMOTHORAX_IMG_DIR, x))
 
         # only keep positive samples for segmentation
-        self.df["class"] = self.df[" EncodedPixels"].apply(lambda x: x != "-1")
+        self.df["class"] = self.df[" EncodedPixels"].apply(lambda x: x != " -1")
         if self.phase == "segmentation" and split == "train":
             self.df_neg = self.df[self.df["class"] == False]
             self.df_pos = self.df[self.df["class"] == True]
@@ -74,7 +74,7 @@ class SIIMImageDataset(BaseImageDataset):
         if self.phase == "segmentation":
             rle_list = imgid_df[" EncodedPixels"].tolist()
             mask = np.zeros([1024, 1024])
-            if rle_list[0] != "-1":
+            if rle_list[0] != " -1":
                 for rle in rle_list:
                     mask += self.rle2mask(
                         rle, PNEUMOTHORAX_IMG_SIZE, PNEUMOTHORAX_IMG_SIZE
@@ -134,6 +134,7 @@ class SIIMImageDataset(BaseImageDataset):
         return mask.reshape(width, height).T
 
     def get_transforms(self, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)):
+    # def get_transforms(self, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
         list_transforms = []
         if self.split == "train":
             list_transforms.extend(

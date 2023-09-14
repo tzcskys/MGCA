@@ -25,7 +25,7 @@ def preprocess_pneumothorax_data(test_fac=0.15):
             if "dcm" in f:
                 # remove dcm
                 file_id = f[:-4]
-                img_paths[file_id] = os.path.join(subdir[105:], f)
+                img_paths[file_id] = os.path.join(subdir[85:], f) #TODO: this is hard coded path by the raw MGCA code, so every machine need to change this
 
     # no encoded pixels mean healthy
     df["Label"] = df.apply(
