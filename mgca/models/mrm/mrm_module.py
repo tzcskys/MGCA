@@ -48,20 +48,12 @@ class MRM(LightningModule):
     def init_encoder(self):
         self.img_encoder = ImageEncoder(
             model_name=self.img_encoder, output_dim=self.hparams.emb_dim)
-        # self.text_encoder = BertEncoder(
-        #     output_dim=self.hparams.emb_dim, freeze_bert=self.freeze_bert)
 
     def forward(self, batch):
         img_feat, _ = self.img_encoder(batch["imgs"])
         img_emb = self.img_encoder.global_embed(img_feat)
         img_emb = F.normalize(img_emb, dim=1)
 
-        # sent_feat, _, _, _ = self.text_encoder(
-        #     batch["caption_ids"], batch["attention_mask"], batch["token_type_ids"])
-        # sent_emb = self.text_encoder.global_embed(sent_feat)
-        # sent_emb = F.normalize(sent_emb, dim=1)
-
-        # return img_emb, sent_emb
         return img_emb
 
     def info_nce_loss(self, out_1, out_2, temperature):
