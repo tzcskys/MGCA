@@ -45,7 +45,8 @@ def polylabel_box(anno):
     p = LineString(np.asarray(polygon + polygon[:2]).reshape(-1, 2))
     c = polylabel(p.buffer(100), tolerance=10)
     box = np.asarray(p.bounds).reshape(-1, 2)
-    cxy = np.asarray(c)
+    # cxy = np.asarray(c)
+    cxy = np.array((float(c.xy[0][0]), float(c.xy[1][0])))
     wh = np.abs(box - cxy)
     wh = np.maximum(wh[0], wh[1])
     box = [cxy - wh, wh * 2]  # xmin, ymin, w, h
@@ -83,7 +84,7 @@ def save_pkl(df, pkl_path):
             bboxs_list.append(bboxs)
 
     filenames = np.array(filenames)
-    bboxs_list = np.array(bboxs_list)
+    bboxs_list = np.array(bboxs_list, dtype=object)
     with open(pkl_path, "wb") as f:
         pickle.dump([filenames, bboxs_list], f)
 
