@@ -13,8 +13,9 @@ from mgca.datasets.data_module import DataModule
 from mgca.datasets.detection_dataset import (OBJCXRDetectionDataset,
                                              RSNADetectionDataset)
 from mgca.datasets.transforms import DetectionDataTransforms
-from mgca.models.backbones.detector_backbone import ResNetDetector
+from mgca.models.backbones.detector_backbone import ResNetDetector, VitDetector
 from mgca.models.ssl_detector import SSLDetector
+from mgca.models.mgca.mgca_module import MGCA
 
 torch.autograd.set_detect_anomaly(True)
 torch.backends.cudnn.deterministic = True
@@ -27,8 +28,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 def cli_main():
     parser = ArgumentParser("Finetuning of object detection task for MGCA")
     parser.add_argument("--base_model", type=str, default="resnet_50")
-    # parser.add_argument("--ckpt_path", type=str, default="/home/r15user2/Documents/MGCA/checkpoints/mgca/resnet_50.ckpt")
-    parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/resnet_50.ckpt")
+    parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/vit_base.ckpt")
+    # parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/resnet_50.ckpt")
     parser.add_argument("--dataset", type=str,
                         default="rsna", help="rsna or object_cxr")
     parser.add_argument("--seed", type=int, default=42)
@@ -55,7 +56,10 @@ def cli_main():
     else:
         raise RuntimeError(f"{args.dataset} does not exist!")
 
-    args.img_encoder = ResNetDetector("resnet_50")
+    # args.img_encoder = ResNetDetector("resnet_50")
+    mgca = MGCA.load_from_checkpoint(args.ckpt_path)
+    encoder = mgca.img_encoder_q.model
+    args.img_encoder = VitDetector(encoder)
     if args.ckpt_path:
         ckpt = torch.load(args.ckpt_path)
         ckpt_dict = dict()
