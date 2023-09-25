@@ -313,7 +313,7 @@ def cli_main():
     args.img_encoder = VitDetector(encoder)
 
     # Freeze encoder
-    for param in args.img_encoder.parameters():
+    for param in args.img_encoder.model.parameters():
         param.requires_grad = False
 
     model = SSLDetector(**args.__dict__)

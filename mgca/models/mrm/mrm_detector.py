@@ -15,7 +15,7 @@ from mgca.datasets.detection_dataset import (OBJCXRDetectionDataset,
 from mgca.datasets.transforms import DetectionDataTransforms
 from mgca.models.backbones.detector_backbone import ResNetDetector, VitDetector
 from mgca.models.ssl_detector import SSLDetector
-from mgca.models.mgca.mgca_module import MGCA
+from mgca.models.mrm.mrm_module import MRM
 
 torch.autograd.set_detect_anomaly(True)
 torch.backends.cudnn.deterministic = True
@@ -27,8 +27,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def cli_main():
     parser = ArgumentParser("Finetuning of object detection task for MGCA")
-    parser.add_argument("--base_model", type=str, default="resnet_50")
-    parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/vit_base.ckpt")
+    parser.add_argument("--base_model", type=str, default="vit")
+    parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/MRM.pth")
     # parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/resnet_50.ckpt")
     parser.add_argument("--dataset", type=str,
                         default="rsna", help="rsna or object_cxr")
@@ -56,19 +56,16 @@ def cli_main():
     else:
         raise RuntimeError(f"{args.dataset} does not exist!")
 
-    # args.img_encoder = ResNetDetector("resnet_50")
-    mgca = MGCA.load_from_checkpoint(args.ckpt_path)
-    encoder = mgca.img_encoder_q.model
-    args.img_encoder = VitDetector(encoder)
-    if args.ckpt_path:
-        ckpt = torch.load(args.ckpt_path)
-        ckpt_dict = dict()
-        for k, v in ckpt["state_dict"].items():
-            if k.startswith("img_encoder_q.model"):
-                new_k = ".".join(k.split(".")[2:])
-                ckpt_dict[new_k] = v
 
-        args.img_encoder.model.load_state_dict(ckpt_dict)
+    model_mrm = MRM(img_encoder="vit-base")  # in here means vit-B/16
+    state_dict = torch.load(args.ckpt_path)
+    params = {k: v for k, v in state_dict.items()}
+    params = params["model"]
+    params = {("img_encoder.model." + k): v for k, v in params.items()}
+    params = {k: v for k, v in params.items() if k in model_mrm.state_dict()}
+    model_mrm.load_state_dict(params, strict=False)
+
+    args.img_encoder = VitDetector(model_mrm.img_encoder.model)
 
     # Freeze encoder
     for param in args.img_encoder.model.parameters():
@@ -80,7 +77,7 @@ def cli_main():
     now = datetime.datetime.now(tz.tzlocal())
     extension = now.strftime("%Y_%m_%d_%H_%M_%S")
     ckpt_dir = os.path.join(
-        BASE_DIR, f"../../../data/ckpts/detection/{extension}")
+        BASE_DIR, f"../../../data/ckpts/mrm_detection/{extension}")
     os.makedirs(ckpt_dir, exist_ok=True)
     callbacks = [
         LearningRateMonitor(logging_interval="step"),
@@ -93,8 +90,8 @@ def cli_main():
         BASE_DIR, f"../../../data")
     os.makedirs(logger_dir, exist_ok=True)
     wandb_logger = WandbLogger(
-        project="detection", save_dir=logger_dir,
-        name=f"MGCA_{args.dataset}_{args.data_pct}_{extension}")
+        project="mrm_detection", save_dir=logger_dir,
+        name=f"{args.dataset}_{args.data_pct}_{extension}")
     trainer = Trainer.from_argparse_args(
         args=args,
         callbacks=callbacks,
