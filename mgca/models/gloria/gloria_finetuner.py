@@ -25,6 +25,10 @@ import tqdm
 import torch.nn.functional as F
 from torch import nn
 from collections import OrderedDict
+from torchvision.models import resnet50
+from typing import Type, Union, Any, Callable, Union, List, Optional
+import numpy as np
+from torch import Tensor
 
 
 torch.autograd.set_detect_anomaly(True)
@@ -263,11 +267,348 @@ def build_model(name, resolution_after=224, jit=False):
     # model.load_state_dict(model_dict)
     return model
 
+
+
+def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv2d:
+    """3x3 convolution with padding"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+                     padding=dilation, groups=groups, bias=False, dilation=dilation)
+
+
+def conv1x1(in_planes: int, out_planes: int, stride: int = 1) -> nn.Conv2d:
+    """1x1 convolution"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
+
+
+class BasicBlock(nn.Module):
+    expansion: int = 1
+
+    def __init__(
+        self,
+        inplanes: int,
+        planes: int,
+        stride: int = 1,
+        downsample: Optional[nn.Module] = None,
+        groups: int = 1,
+        base_width: int = 64,
+        dilation: int = 1,
+        norm_layer: Optional[Callable[..., nn.Module]] = None
+    ) -> None:
+        super(BasicBlock, self).__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        if groups != 1 or base_width != 64:
+            raise ValueError('BasicBlock only supports groups=1 and base_width=64')
+        if dilation > 1:
+            raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
+        # Both self.conv1 and self.downsample layers downsample the input when stride != 1
+        self.conv1 = conv3x3(inplanes, planes, stride)
+        self.bn1 = norm_layer(planes)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3x3(planes, planes)
+        self.bn2 = norm_layer(planes)
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, x: Tensor) -> Tensor:
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
+
+
+class Bottleneck(nn.Module):
+    # Bottleneck in torchvision places the stride for downsampling at 3x3 convolution(self.conv2)
+    # while original implementation places the stride at the first 1x1 convolution(self.conv1)
+    # according to "Deep residual learning for image recognition"https://arxiv.org/abs/1512.03385.
+    # This variant is also known as ResNet V1.5 and improves accuracy according to
+    # https://ngc.nvidia.com/catalog/model-scripts/nvidia:resnet_50_v1_5_for_pytorch.
+
+    expansion: int = 4
+
+    def __init__(
+        self,
+        inplanes: int,
+        planes: int,
+        stride: int = 1,
+        downsample: Optional[nn.Module] = None,
+        groups: int = 1,
+        base_width: int = 64,
+        dilation: int = 1,
+        norm_layer: Optional[Callable[..., nn.Module]] = None
+    ) -> None:
+        super(Bottleneck, self).__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        width = int(planes * (base_width / 64.)) * groups
+        # Both self.conv2 and self.downsample layers downsample the input when stride != 1
+        self.conv1 = conv1x1(inplanes, width)
+        self.bn1 = norm_layer(width)
+        self.conv2 = conv3x3(width, width, stride, groups, dilation)
+        self.bn2 = norm_layer(width)
+        self.conv3 = conv1x1(width, planes * self.expansion)
+        self.bn3 = norm_layer(planes * self.expansion)
+        self.relu = nn.ReLU(inplace=True)
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, x: Tensor) -> Tensor:
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
+
+
+class ResNet(nn.Module):
+
+    def __init__(
+        self,
+        block: Type[Union[BasicBlock, Bottleneck]],
+        layers: List[int],
+        num_classes: int = 1000,
+        zero_init_residual: bool = False,
+        groups: int = 1,
+        width_per_group: int = 64,
+        replace_stride_with_dilation: Optional[List[bool]] = None,
+        norm_layer: Optional[Callable[..., nn.Module]] = None
+    ) -> None:
+        super(ResNet, self).__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        self._norm_layer = norm_layer
+
+        self.inplanes = 64
+        self.dilation = 1
+        if replace_stride_with_dilation is None:
+            # each element in the tuple indicates if we should replace
+            # the 2x2 stride with a dilated convolution instead
+            replace_stride_with_dilation = [False, False, False]
+        if len(replace_stride_with_dilation) != 3:
+            raise ValueError("replace_stride_with_dilation should be None "
+                             "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
+        self.groups = groups
+        self.base_width = width_per_group
+        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3,
+                               bias=False)
+        self.bn1 = norm_layer(self.inplanes)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2,
+                                       dilate=replace_stride_with_dilation[0])
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2,
+                                       dilate=replace_stride_with_dilation[1])
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
+                                       dilate=replace_stride_with_dilation[2])
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(512 * block.expansion, num_classes)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+        # Zero-initialize the last BN in each residual branch,
+        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
+        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+        if zero_init_residual:
+            for m in self.modules():
+                if isinstance(m, Bottleneck):
+                    nn.init.constant_(m.bn3.weight, 0)  # type: ignore[arg-type]
+                elif isinstance(m, BasicBlock):
+                    nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]
+
+    def _make_layer(self, block: Type[Union[BasicBlock, Bottleneck]], planes: int, blocks: int,
+                    stride: int = 1, dilate: bool = False) -> nn.Sequential:
+        norm_layer = self._norm_layer
+        downsample = None
+        previous_dilation = self.dilation
+        if dilate:
+            self.dilation *= stride
+            stride = 1
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                conv1x1(self.inplanes, planes * block.expansion, stride),
+                norm_layer(planes * block.expansion),
+            )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, stride, downsample, self.groups,
+                            self.base_width, previous_dilation, norm_layer))
+        self.inplanes = planes * block.expansion
+        for _ in range(1, blocks):
+            layers.append(block(self.inplanes, planes, groups=self.groups,
+                                base_width=self.base_width, dilation=self.dilation,
+                                norm_layer=norm_layer))
+
+        return nn.Sequential(*layers)
+
+    def _forward_impl(self, x: Tensor) -> Tensor:
+        # See note [TorchScript super()]
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+
+        return x
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self._forward_impl(x)
+
+
+def _resnet(
+    arch: str,
+    block: Type[Union[BasicBlock, Bottleneck]],
+    layers: List[int],
+    pretrained: bool,
+    progress: bool,
+    **kwargs: Any
+) -> ResNet:
+    model = ResNet(block, layers, **kwargs)
+    if pretrained:
+        # state_dict = load_state_dict_from_url(model_urls[arch],
+        #                                       progress=progress)
+        # model.load_state_dict(state_dict)
+        raise NotImplementedError
+    return model
+
+def resnet50(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> ResNet:
+    r"""ResNet-50 model from
+    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    return _resnet('resnet50', Bottleneck, [3, 4, 6, 3], pretrained, progress,
+                   **kwargs)
+
+def get_network(backbone, output_layer, pretrained, weights=None, **kwargs):
+    """
+    Create sub-network given a backbone and an output_layer
+    """
+    # Create avgpool for densenet, doesnt exist as such
+    if 'densenet' in backbone and output_layer == 'avgpool':
+        sub_network = get_network(backbone, 'features', pretrained, **kwargs)
+        sub_network.add_module('relu', nn.ReLU(inplace=True))
+        sub_network.add_module('avgpool', nn.AdaptiveAvgPool2d((1, 1)))
+        sub_network.add_module('flatten', nn.Flatten(1))
+        return sub_network
+
+    # torchxrayvision
+    if "xrv" in backbone.lower():
+        network = eval(backbone)(weights=weights)
+        if hasattr(network, 'model'):  # XrvResNet Fix
+            network = network.model
+    else:
+        network = eval(backbone)(pretrained=pretrained, **kwargs)
+
+    if output_layer is not None and (not output_layer == 'classifier'):
+        layers = [n for n, _ in network.named_children()]
+        assert output_layer in layers, '{} not in {}'.format(output_layer, layers)
+        sub_network = []
+        for n, c in network.named_children():
+            sub_network.append(c)
+            if n == output_layer:
+                break
+        network = nn.Sequential(*sub_network)
+
+    return network
+
+class CNN(nn.Module):
+    def __init__(self, backbone, dropout_out, permute, freeze=True, output_layer=None, pretrained=True,
+                 visual_embedding_dim=None, **kwargs):
+        super(CNN, self).__init__()
+        self.backbone = backbone
+        self.output_layer = output_layer
+        self.permute = permute
+        self.freeze = freeze
+        self.pretrained = pretrained
+
+        self.cnn = get_network(self.backbone, self.output_layer, self.pretrained, **kwargs)
+        self.dropout_out = nn.Dropout(p=dropout_out)
+
+        assert permute in ["batch_first", "spatial_first", "no_permute"]
+
+        if freeze:
+            for name, param in self.cnn.named_parameters():
+                param.requires_grad = False
+
+    def forward(self, images, **kwargs):
+        out = self.cnn(images)
+        out = self.dropout_out(out)
+        # if self.permute == "no_permute":
+        #     out = out
+        # elif self.permute == "batch_first":
+        #     out = out.view(*out.size()[:2], -1).permute(0, 2, 1) # (batch, H*W, C)
+        #     if out.shape[1] == 1:  # avgpool case
+        #         out = out.squeeze(1)
+        # elif self.permute == "spatial_first":
+        #     out = out.view(*out.size()[:2], -1).permute(2, 0, 1)
+        # else:
+        #     raise NotImplementedError()
+
+        return out, 0
+
+    def train(self, mode: bool = True):
+        if self.freeze:
+            mode = False
+        self.training = mode
+        for module in self.children():
+            module.train(mode)
+        return self
+
+    def __repr__(self):
+        s = str(self.backbone) + '(output_layer=' + self.output_layer + ', dropout_out=' + str(
+            self.dropout_out.p) + ', freeze=' + str(self.freeze) + ', pretrained=' + str(self.pretrained) + \
+            ('\n classifier= {}'.format(self.cnn.classifier) if self.output_layer == 'classifier' else '' + ')')
+        return s
+
 def cli_main():
     parser = ArgumentParser()
     parser.add_argument("--dataset", type=str, default="chexpert")
-    parser.add_argument("--path", type=str,
-                        default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/3.811652_16_644792.pth")
+    # parser.add_argument("--path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/14.48168_11_439185.pth")
+    parser.add_argument("--path", type=str, default="/mnt/Research/mingjian/results/pre_trained_model/mgca/11.007858_13_605046.pth")
+    parser.add_argument("--base_model", type=str, default="vit", help="resnet50 or vit")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=48)
     parser.add_argument("--num_workers", type=int, default=16)
@@ -306,16 +647,24 @@ def cli_main():
 
 
     if args.path:
-        # model = GLoRIA.load_from_checkpoint(args.path, strict=False)
-        model = build_model("ViT-B/16")
+        if args.base_model == "vit":
+            model = build_model("ViT-B/16")
 
-        state_dict = torch.load(args.path)
-        # the vision_encoder.ln_final, vision_encoder.token_embedding, vision_encoder.positional_embedding are not used since it is used by m3ae for text, no relation to the img
-        # but the vision_encoder.visual.positional_embedding is used
-        # params = {re.sub('^vision_encoder.visual.', '', k): v for k, v in state_dict["model"].items()} # this is for m3ae gloria pre-trained model
-        params = {re.sub('^module.vision_encoder.visual.', '', k): v for k, v in state_dict["model"].items()} # this is for m3ae MST pre-trained model
-        params = {k: v for k, v in params.items() if k in model.state_dict()}
-        model.load_state_dict(params, strict=True)
+            state_dict = torch.load(args.path)
+            # the vision_encoder.ln_final, vision_encoder.token_embedding, vision_encoder.positional_embedding are not used since it is used by m3ae for text, no relation to the img
+            # but the vision_encoder.visual.positional_embedding is used
+            params = {re.sub('^vision_encoder.visual.', '', k): v for k, v in state_dict["model"].items()} # this is for m3ae gloria pre-trained model
+            # params = {re.sub('^module.vision_encoder.visual.', '', k): v for k, v in state_dict["model"].items()} # this is for m3ae MST pre-trained model
+            params = {k: v for k, v in params.items() if k in model.state_dict()}
+            model.load_state_dict(params, strict=True)
+        elif args.base_model == "resnet50":
+            model = CNN("resnet50", 0.0, "batch_first", False, "avgpool", False)
+            state_dict = torch.load(args.path)
+            params = {re.sub('^visual.cnn.', '', k): v for k, v in state_dict["model"].items()}
+            params = {k: v for k, v in params.items() if k in model.cnn.state_dict()}
+            model.cnn.load_state_dict(params, strict=True)
+        else:
+            raise RuntimeError(f"no base model called {args.base_model}")
     else:
         # model = GLoRIA()
         raise RuntimeError("no path provided")
@@ -326,7 +675,10 @@ def cli_main():
 
     args.model_name = "vit_m3ae_version"
     args.backbone = model # TODO
-    args.in_features = args.backbone.width # TODO
+    if args.base_model == "vit":
+        args.in_features = args.backbone.width # TODO
+    else:
+        args.in_features = 2048 # output dim of resnet 50 last layer
 
     args.num_classes = num_classes
     args.multilabel = multilabel
