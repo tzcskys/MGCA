@@ -275,7 +275,7 @@ def cli_main():
                         default="rsna", help="rsna or object_cxr")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=16)
-    parser.add_argument("--num_workers", type=int, default=16)
+    parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--learning_rate", type=float, default=5e-4)
     parser.add_argument("--weight_decay", type=float, default=1e-6)
     parser.add_argument("--data_pct", type=float, default=0.01)

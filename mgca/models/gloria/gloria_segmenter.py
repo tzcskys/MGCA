@@ -21,7 +21,7 @@ import re
 import hashlib
 import urllib
 import warnings
-import tqdm
+from tqdm import tqdm
 import torch.nn.functional as F
 from torch import nn
 from collections import OrderedDict
@@ -268,11 +268,11 @@ def cli_main():
     parser.add_argument("--base_model", type=str,
                         default="vit", help="resnet50 or vit")
     # parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/vit_base.ckpt")
-    parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/8.817352_12_439967.pth")
+    parser.add_argument("--ckpt_path", type=str, default="/mnt/Research/mingjian/results/pre_trained_model/mgca/11.007858_13_605046.pth")
     parser.add_argument("--dataset", type=str, default="siim")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--num_workers", type=int, default=16)
+    parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--learning_rate", type=float, default=2e-4)
     parser.add_argument("--weight_decay", type=float, default=0.05)
     parser.add_argument("--data_pct", type=float, default=0.01)
@@ -302,8 +302,8 @@ def cli_main():
     state_dict = torch.load(args.ckpt_path)
     # the vision_encoder.ln_final, vision_encoder.token_embedding, vision_encoder.positional_embedding are not used since it is used by m3ae for text, no relation to the img
     # but the vision_encoder.visual.positional_embedding is used
-    # params = {re.sub('^vision_encoder.visual.', '', k): v for k, v in state_dict["model"].items()}  # this is for m3ae gloria pre-trained model
-    params = {re.sub('^module.vision_encoder.visual.', '', k): v for k, v in state_dict["model"].items()} # this is for m3ae MST pre-trained model
+    params = {re.sub('^vision_encoder.visual.', '', k): v for k, v in state_dict["model"].items()}  # this is for m3ae gloria pre-trained model
+    # params = {re.sub('^module.vision_encoder.visual.', '', k): v for k, v in state_dict["model"].items()} # this is for m3ae MST pre-trained model
     params = {k: v for k, v in params.items() if k in model_gloria.state_dict()}
     model_gloria.load_state_dict(params, strict=True)
 

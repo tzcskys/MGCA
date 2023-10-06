@@ -611,7 +611,7 @@ def cli_main():
     parser.add_argument("--base_model", type=str, default="vit", help="resnet50 or vit")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=48)
-    parser.add_argument("--num_workers", type=int, default=16)
+    parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--data_pct", type=float, default=0.01)
     # add trainer args
     parser = Trainer.add_argparse_args(parser)

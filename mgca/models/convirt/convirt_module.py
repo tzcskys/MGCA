@@ -126,7 +126,7 @@ class ConVIRT(LightningModule):
         parser.add_argument("--freeze_bert", action="store_true")
         parser.add_argument("--emb_dim", type=int,
                             default=128, help="128, 256")
-        parser.add_argument("--num_workers", type=int, default=16)
+        parser.add_argument("--num_workers", type=int, default=4)
         parser.add_argument("--num_negatives", type=int, default=65536)
         parser.add_argument("--encoder_momentum", type=float, default=0.999)
         parser.add_argument("--softmax_temperature", type=float, default=0.07)

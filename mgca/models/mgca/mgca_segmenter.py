@@ -28,12 +28,12 @@ def cli_main():
         "Finetuning of semantic segmentation task for MGCA")
     parser.add_argument("--base_model", type=str,
                         default="resnet50", help="resnet50 or vit")
-    # parser.add_argument("--ckpt_path", type=str, default="/home/r15user2/Documents/MGCA/checkpoints/mgca/resnet_50.ckpt")
     parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/resnet_50.ckpt")
+    # parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/vit_base.ckpt")
     parser.add_argument("--dataset", type=str, default="siim")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--num_workers", type=int, default=16)
+    parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--learning_rate", type=float, default=2e-4)
     parser.add_argument("--weight_decay", type=float, default=0.05)
     parser.add_argument("--data_pct", type=float, default=0.01)
@@ -84,10 +84,10 @@ def cli_main():
             for k, v in ckpt["state_dict"].items():
                 if k.startswith("img_encoder_q.model"):
                     new_k = ".".join(k.split(".")[2:])
-                    new_k = new_k.replace("blocks", "layer")
+                    new_k = new_k.replace("blocks", "layer") # actually no use, since the downloaded ckpt is using "layer" not "blocks", this will just keep the same
                     ckpt_dict[new_k] = v
 
-            ckpt_dict["fc.bias"] = None
+            ckpt_dict["fc.bias"] = None # there is no fc weights in the downloaded mgca ckpt, but the defined resnet50 has fc layer
             ckpt_dict["fc.weight"] = None
 
             args.seg_model.encoder.load_state_dict(ckpt_dict)

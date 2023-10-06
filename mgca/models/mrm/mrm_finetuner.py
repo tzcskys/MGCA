@@ -32,7 +32,7 @@ def cli_main():
                         default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/MRM.pth")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=48)
-    parser.add_argument("--num_workers", type=int, default=16)
+    parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--data_pct", type=float, default=0.01)
     # add trainer args
     parser = Trainer.add_argparse_args(parser)
