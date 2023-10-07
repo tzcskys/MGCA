@@ -30,25 +30,30 @@ class CNN(nn.Module):
     def __init__(self, backbone):
         super(CNN, self).__init__()
 
-        ## we need to remove the last fc layer and the SSLFineTuner will add a new fc layer
-        resnet50_raw = resnet50()
-        sub_network = []
-        for n, c in resnet50_raw.named_children():
-            sub_network.append(c)
-            if n == "avgpool":  # break the loop after adding the user specified output layer, e.g., avgpool, and the last fc layer will be removed
-                break
-        network = nn.Sequential(*sub_network)
-        self.cnn = network
+        self.cnn = resnet50()
 
     def forward(self, images):
-        out = self.cnn(images)
-        return out, 0 # this is only because the SSLFineTuner requires 2 outputs
+        x = self.cnn.conv1(images)
+        x = self.cnn.bn1(x)
+        x = self.cnn.relu(x)
+        x = self.cnn.maxpool(x)
+
+        x = self.cnn.layer1(x)
+        x = self.cnn.layer2(x)
+        x = self.cnn.layer3(x)
+        x = self.cnn.layer4(x)
+
+        x = self.cnn.avgpool(x)
+        x = torch.flatten(x, 1)
+        # x = self.fc(x) # removed the last fc layer, and the SSLFineTuner will add a new fc layer
+
+        return x, 0 # this is only because the SSLFineTuner requires 2 outputs
 
 
 def cli_main():
     parser = ArgumentParser()
     parser.add_argument("--dataset", type=str, default="chexpert")
-    parser.add_argument("--path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/MedKLIP_checkpoint_final.pth")
+    parser.add_argument("--path", type=str, default="/mnt/Research/mingjian/results/pre_trained_model/mgca/MedKLIP_checkpoint_final.pth")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=48)
     parser.add_argument("--num_workers", type=int, default=4)
@@ -109,10 +114,6 @@ def cli_main():
                 new_k = "layer3" + k[1:]
                 new_params[new_k] = v
 
-        # # the defined resnet50 has one fc layer; fc is not used in the segmentation, see the mgca_segmenter.py
-        # new_params["fc.bias"] = None
-        # new_params["fc.weight"] = None
-
         model.cnn.load_state_dict(new_params, strict=False)  # strict has to set as false since we miss the last resblock, also not have the fc layer
     else:
         model = MGCA()
@@ -128,12 +129,11 @@ def cli_main():
     tuner = SSLFineTuner(**args.__dict__)
 
     ## this is because the medklip pretrained model do not have the last resblock, so we cant fix that part.
+    ## for medklip, the SSLFineTuner init will freeze the whole backbone, and the shared_step() of SSLFineTuner will also using "with torch.no_grad()"
+    ## !! so we need to manually set the requires_grad=True for the last resblock (layer4) here after the SSLFineTuner init, and comment out the "with torch.no_grad()" from shared_step() of SSLFineTuner
     for name, param in tuner.backbone.cnn.named_parameters():
         if name.startswith("layer4."):
-            print(name)
-            print(param.requires_grad)
             param.requires_grad = True
-            print(param.requires_grad)
 
     # get current time
     now = datetime.datetime.now(tz.tzlocal())
