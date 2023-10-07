@@ -97,14 +97,14 @@ class SSLFineTuner(LightningModule):
         x, y = batch
         # For multi-class
 
-        # with torch.no_grad():
-        #     feats, _ = self.backbone(x)
-        #     # if "vit" in self.model_name:
-        #     #     feats = feats[:, 0]
+        with torch.no_grad():
+            feats, _ = self.backbone(x)
+            # if "vit" in self.model_name:
+            #     feats = feats[:, 0]
 
-        ## !! this is only for medklip, since the last resblock is not pretrained in medklip and we need to train it,
-        ## !! fix the weights for all resblocks in the sslfinetuner init, and then unfreeze the last resblock in the medklip_finetuner.py
-        feats, _ = self.backbone(x)
+        # ## !! this is only for medklip, since the last resblock is not pretrained in medklip and we need to train it,
+        # ## !! fix the weights for all resblocks in the sslfinetuner init, and then unfreeze the last resblock in the medklip_finetuner.py
+        # feats, _ = self.backbone(x)
 
         feats = feats.view(feats.size(0), -1)
         logits = self.linear_layer(feats)

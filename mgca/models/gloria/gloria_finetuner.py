@@ -549,7 +549,7 @@ def get_network(backbone, output_layer, pretrained, weights=None, **kwargs):
             sub_network.append(c)
             if n == output_layer: # break the loop after adding the user specified output layer, e.g., avgpool, and the last fc layer will be removed
                 break
-        network = nn.Sequential(*sub_network)
+        network = nn.Sequential(*sub_network) # this will rename all the layers into 0/ 1/ 4/ etc. but the pretrained weights also use the same naming convention, so it's right
 
     return network
 
