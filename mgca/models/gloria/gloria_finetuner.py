@@ -487,8 +487,7 @@ class ResNet(nn.Module):
 
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
-        x = self.fc(x)
-
+        x = self.fc(x) ## be careful, the last fc layer used for classification will be removed in CNN(), and SSLFintuner will append a new fc layer
         return x
 
     def forward(self, x: Tensor) -> Tensor:
@@ -542,13 +541,13 @@ def get_network(backbone, output_layer, pretrained, weights=None, **kwargs):
     else:
         network = eval(backbone)(pretrained=pretrained, **kwargs)
 
-    if output_layer is not None and (not output_layer == 'classifier'):
+    if output_layer is not None and (not output_layer == 'classifier'): ## this removed the last raw fc layer from the resnet for downstream tasks, since we set output_layer to be "avgpool"
         layers = [n for n, _ in network.named_children()]
         assert output_layer in layers, '{} not in {}'.format(output_layer, layers)
         sub_network = []
         for n, c in network.named_children():
             sub_network.append(c)
-            if n == output_layer:
+            if n == output_layer: # break the loop after adding the user specified output layer, e.g., avgpool, and the last fc layer will be removed
                 break
         network = nn.Sequential(*sub_network)
 
@@ -607,7 +606,7 @@ def cli_main():
     parser = ArgumentParser()
     parser.add_argument("--dataset", type=str, default="chexpert")
     # parser.add_argument("--path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/14.48168_11_439185.pth")
-    parser.add_argument("--path", type=str, default="/mnt/Research/mingjian/results/pre_trained_model/mgca/11.007858_13_605046.pth")
+    parser.add_argument("--path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/4.922432_10_621951.pth")
     parser.add_argument("--base_model", type=str, default="vit", help="resnet50 or vit")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=48)
