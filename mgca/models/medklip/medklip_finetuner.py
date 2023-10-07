@@ -91,7 +91,7 @@ def cli_main():
         raise RuntimeError(f"no dataset called {args.dataset}")
 
     if args.path:
-        model = CNN("resent50")
+        model = CNN("resnet50")
         state_dict = torch.load(args.path)
         params = {re.sub('^module.res_features.', '', k): v for k, v in state_dict["model"].items()}
         new_params = dict()
