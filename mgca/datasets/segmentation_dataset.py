@@ -133,8 +133,9 @@ class SIIMImageDataset(BaseImageDataset):
 
         return mask.reshape(width, height).T
 
-    # def get_transforms(self, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)):
-    def get_transforms(self, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
+    # def get_transforms(self, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)): # mean std for mgca
+    def get_transforms(self, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)): # mean std for vilmedic/sat/medklip/mrm
+    # def get_transforms(self, mean=(0.586, 0.586, 0.586), std=(0.279, 0.279, 0.279)): # mean std for medclip
         list_transforms = []
         if self.split == "train":
             list_transforms.extend(
@@ -232,7 +233,9 @@ class RSNASegmentDataset(BaseImageDataset):
 
         return x, y
 
-    def get_transforms(self, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)):
+    # def get_transforms(self, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)): # mean std for mgca
+    def get_transforms(self, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)): # mean std for vilmedic/sat/medklip/mrm
+    # def get_transforms(self, mean=(0.586, 0.586, 0.586), std=(0.279, 0.279, 0.279)):  # mean std for medclip
         list_transforms = []
         if self.split == "train":
             list_transforms.extend(
