@@ -12,8 +12,8 @@ from pytorch_lightning.loggers import WandbLogger
 
 from mgca.datasets.data_module import DataModule
 from mgca.datasets.segmentation_dataset import (RSNASegmentDataset,
-                                                SIIMImageDataset)
-from mgca.models.backbones.transformer_seg import SETRModel
+                                                SIIMImageDataset, TBX11KSegmentDataset)
+from mgca.models.backbones.transformer_seg import SETRModel, SETRModel_deep
 from mgca.models.mgca.mgca_module import MGCA
 from mgca.models.ssl_segmenter import SSLSegmenter
 
@@ -27,7 +27,7 @@ def cli_main():
     parser = ArgumentParser(
         "Finetuning of semantic segmentation task for MGCA")
     parser.add_argument("--base_model", type=str,
-                        default="resnet50", help="resnet50 or vit")
+                        default="vit", help="resnet50 or vit")
     parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/resnet_50.ckpt")
     # parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/vit_base.ckpt")
     parser.add_argument("--dataset", type=str, default="siim")
@@ -54,12 +54,29 @@ def cli_main():
         datamodule = DataModule(RSNASegmentDataset, None,
                                 None, args.data_pct,
                                 args.batch_size, args.num_workers)
+    elif args.dataset == "tbx11k":
+        datamodule = DataModule(TBX11KSegmentDataset, None,
+                                None, args.data_pct,
+                                args.batch_size, args.num_workers)
 
     mgca = MGCA.load_from_checkpoint(args.ckpt_path)
+
+    # ## TODO: this is for debugging, remove later!
+    # mgca = MGCA()
+
     encoder = mgca.img_encoder_q.model
 
     if args.base_model == "vit":
-        args.seg_model = SETRModel(
+        # args.seg_model = SETRModel(
+        #     patch_size=(16, 16),
+        #     in_channels=3,
+        #     out_channels=1,
+        #     hidden_size=768,
+        #     num_hidden_layers=12,
+        #     num_attention_heads=12,
+        #     decode_features=[512, 256, 128, 64]
+        # )
+        args.seg_model = SETRModel_deep(
             patch_size=(16, 16),
             in_channels=3,
             out_channels=1,
@@ -94,6 +111,14 @@ def cli_main():
             # Freeze encoder
             for param in args.seg_model.encoder.parameters():
                 param.requires_grad = False
+        
+        ### for evaluation random init / imagenet init of resnet50
+        # args.seg_model = smp.Unet(
+        #     args.base_model, encoder_weights=None, activation=None)
+        # args.seg_model = smp.Unet(
+        #     args.base_model, encoder_weights='imagenet', activation=None)
+        # for param in args.seg_model.encoder.parameters():
+        #         param.requires_grad = False
 
     model = SSLSegmenter(**args.__dict__)
 
@@ -123,6 +148,8 @@ def cli_main():
 
     model.training_steps = model.num_training_steps(trainer, datamodule)
     print(model.training_steps)
+    ## run test before train, to check if the model is loaded correctly
+    trainer.test(model, datamodule=datamodule)
     trainer.fit(model, datamodule=datamodule)
     trainer.test(model, datamodule=datamodule, ckpt_path='best')
 

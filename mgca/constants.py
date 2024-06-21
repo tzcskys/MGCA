@@ -206,6 +206,19 @@ RSNA_DETECTION_TEST_PKL = RSNA_DATA_DIR / "test.pkl"
 RSNA_IMG_DIR = RSNA_DATA_DIR / "stage_2_train_images"
 RSNA_TRAIN_PCT = 0.7
 
+# #############################################
+# TBX11K constants
+# #############################################
+TBX11K_DATA_DIR = DATA_BASE_DIR / "TBX11K"
+TBX11K_ORIGINAL_TRAIN_CSV = TBX11K_DATA_DIR / "annotations/json/TBX11K_train_only_tb.json"
+TBX11K_ORIGINAL_VAL_CSV = TBX11K_DATA_DIR / "annotations/json/TBX11K_val_only_tb.json"
+TBX11K_TRAIN_CSV = TBX11K_DATA_DIR / "train.csv"
+TBX11K_VALID_CSV = TBX11K_DATA_DIR / "val.csv"
+TBX11K_TEST_CSV = TBX11K_DATA_DIR / "test.csv"
+
+TBX11K_IMG_DIR = TBX11K_DATA_DIR / "imgs"
+TBX11K_TRAIN_PCT = 0.9 # sample 10% for val from original train set following "Improved Semantic Segmentation of Tuberculosis—Consistent Findings in Chest X-rays Using Augmented Training of Modality-Specific U-Net Models with Weak Localizations"
+
 
 # #############################################
 # SIIM constants

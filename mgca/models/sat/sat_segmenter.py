@@ -12,7 +12,7 @@ from pytorch_lightning.loggers import WandbLogger
 
 from mgca.datasets.data_module import DataModule
 from mgca.datasets.segmentation_dataset import (RSNASegmentDataset,
-                                                SIIMImageDataset)
+                                                SIIMImageDataset, TBX11KSegmentDataset)
 from mgca.models.backbones.transformer_seg import SETRModel
 # from mgca.models.mgca.mgca_module import MGCA
 from mgca.models.ssl_segmenter import SSLSegmenter
@@ -42,7 +42,7 @@ def cli_main():
         "Finetuning of semantic segmentation task for MGCA")
     parser.add_argument("--base_model", type=str,
                         default="resnet50", help="resnet50 or vit")
-    parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD1/mingjian/pretrained_model/SAT_res50.pth")
+    parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/SAT_res50.pth")
     parser.add_argument("--dataset", type=str, default="siim")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=8)
@@ -65,6 +65,10 @@ def cli_main():
                                 args.batch_size, args.num_workers)
     elif args.dataset == "rsna":
         datamodule = DataModule(RSNASegmentDataset, None,
+                                None, args.data_pct,
+                                args.batch_size, args.num_workers)
+    elif args.dataset == "tbx11k":
+        datamodule = DataModule(TBX11KSegmentDataset, None,
                                 None, args.data_pct,
                                 args.batch_size, args.num_workers)
 
@@ -149,6 +153,8 @@ def cli_main():
 
     model.training_steps = model.num_training_steps(trainer, datamodule)
     print(model.training_steps)
+    ## run test before train, to check if the model is loaded correctly
+    trainer.test(model, datamodule=datamodule)
     trainer.fit(model, datamodule=datamodule)
     trainer.test(model, datamodule=datamodule, ckpt_path='best')
 

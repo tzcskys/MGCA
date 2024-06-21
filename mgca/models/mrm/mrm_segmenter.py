@@ -12,8 +12,8 @@ from pytorch_lightning.loggers import WandbLogger
 
 from mgca.datasets.data_module import DataModule
 from mgca.datasets.segmentation_dataset import (RSNASegmentDataset,
-                                                SIIMImageDataset)
-from mgca.models.backbones.transformer_seg import SETRModel
+                                                SIIMImageDataset, TBX11KSegmentDataset)
+from mgca.models.backbones.transformer_seg import SETRModel, SETRModel_deep
 from mgca.models.ssl_segmenter import SSLSegmenter
 from mgca.models.mrm.mrm_module import MRM
 
@@ -56,6 +56,10 @@ def cli_main():
         datamodule = DataModule(RSNASegmentDataset, None,
                                 None, args.data_pct,
                                 args.batch_size, args.num_workers)
+    elif args.dataset == "tbx11k":
+        datamodule = DataModule(TBX11KSegmentDataset, None,
+                                None, args.data_pct,
+                                args.batch_size, args.num_workers)
 
     # mgca = MGCA.load_from_checkpoint(args.ckpt_path)
     # encoder = mgca.img_encoder_q.model
@@ -66,10 +70,19 @@ def cli_main():
     params = params["model"]
     params = {("img_encoder.model." + k): v for k, v in params.items()}
     params = {k: v for k, v in params.items() if k in model_mrm.state_dict()}
-    model_mrm.load_state_dict(params, strict=False)
+    model_mrm.load_state_dict(params, strict=False) # this is because we reused the img_encoder from MGCA, and it contains global_embed and local_embed, we don't have that in pretrained weights.
 
     if args.base_model == "vit":
-        args.seg_model = SETRModel(
+        # args.seg_model = SETRModel(
+        #     patch_size=(16, 16),
+        #     in_channels=3,
+        #     out_channels=1,
+        #     hidden_size=768,
+        #     num_hidden_layers=12,
+        #     num_attention_heads=12,
+        #     decode_features=[512, 256, 128, 64]
+        # )
+        args.seg_model = SETRModel_deep(
             patch_size=(16, 16),
             in_channels=3,
             out_channels=1,
@@ -78,6 +91,7 @@ def cli_main():
             num_attention_heads=12,
             decode_features=[512, 256, 128, 64]
         )
+
         args.seg_model.encoder_2d.bert_model = model_mrm.img_encoder.model
 
         for param in args.seg_model.encoder_2d.bert_model.parameters():
@@ -133,6 +147,8 @@ def cli_main():
 
     model.training_steps = model.num_training_steps(trainer, datamodule)
     print(model.training_steps)
+    ## run test before train, to check if the model is loaded correctly
+    trainer.test(model, datamodule=datamodule)
     trainer.fit(model, datamodule=datamodule)
     trainer.test(model, datamodule=datamodule, ckpt_path='best')
 

@@ -11,6 +11,8 @@ from mgca.constants import *
 from mgca.datasets.classification_dataset import BaseImageDataset
 from mgca.datasets.utils import resize_img
 from PIL import Image
+import ast
+import matplotlib.pyplot as plt
 
 np.random.seed(42)
 
@@ -230,6 +232,148 @@ class RSNASegmentDataset(BaseImageDataset):
 
         x = augmented["image"]
         y = augmented["mask"].squeeze()
+
+        return x, y
+
+    # def get_transforms(self, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)): # mean std for mgca
+    def get_transforms(self, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)): # mean std for vilmedic/sat/medklip/mrm
+    # def get_transforms(self, mean=(0.586, 0.586, 0.586), std=(0.279, 0.279, 0.279)):  # mean std for medclip
+        list_transforms = []
+        if self.split == "train":
+            list_transforms.extend(
+                [
+                    ShiftScaleRotate(
+                        shift_limit=0,  # no resizing
+                        scale_limit=0.1,
+                        rotate_limit=10,  # rotate
+                        p=0.5,
+                        border_mode=cv2.BORDER_CONSTANT,
+                    )
+                ]
+            )
+        list_transforms.extend(
+            [
+                Resize(self.imsize, self.imsize),
+                Normalize(mean=mean, std=std, p=1),
+                ToTensorV2(),
+            ]
+        )
+
+        list_trfms = Compose(list_transforms)
+        return list_trfms
+
+class TBX11KSegmentDataset(BaseImageDataset):
+    def __init__(self, split="train", transform=None, data_pct=1., imsize=224) -> None:
+        super().__init__(split, transform)
+
+        if not os.path.exists(TBX11K_DATA_DIR):
+            raise RuntimeError(f"{TBX11K_DATA_DIR} does not exist!")
+
+        def convert_bbox_string(bbox_str):
+            return ast.literal_eval(bbox_str)
+
+        if self.split == "train":
+            with open(TBX11K_TRAIN_CSV, 'r') as file:
+                df = pd.read_csv(file)
+            df['bbox'] = df['bbox'].apply(convert_bbox_string)
+            self.filenames = df['patientId'].tolist()
+            bboxs_list = df['bbox'].tolist()
+            self.bboxs = np.array(bboxs_list, dtype=object)
+        elif self.split == "valid":
+            with open(TBX11K_VALID_CSV, 'r') as file:
+                df = pd.read_csv(file)
+            df['bbox'] = df['bbox'].apply(convert_bbox_string)
+            self.filenames = df['patientId'].tolist()
+            bboxs_list = df['bbox'].tolist()
+            self.bboxs = np.array(bboxs_list, dtype=object)
+        elif self.split == "test":
+            with open(TBX11K_TEST_CSV, 'r') as file:
+                df = pd.read_csv(file)
+            df['bbox'] = df['bbox'].apply(convert_bbox_string)
+            self.filenames = df['patientId'].tolist()
+            bboxs_list = df['bbox'].tolist()
+            self.bboxs = np.array(bboxs_list, dtype=object)
+        else:
+            raise ValueError(f"split {split} does not exist!")
+
+        n = len(self.filenames)
+        if split == "train":
+            indices = np.random.choice(n, int(data_pct * n), replace=False)
+            sampled_filenames = [self.filenames[i] for i in indices]
+            self.filenames = sampled_filenames
+            self.bboxs = self.bboxs[indices]
+
+        self.imsize = imsize
+        self.seg_transform = self.get_transforms()
+
+    def __len__(self):
+        return len(self.filenames)
+    
+    def read_from_png(self, img_path):
+        x = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
+
+        gray_img = cv2.cvtColor(x, cv2.COLOR_BGR2GRAY)
+        gray_img = cv2.convertScaleAbs(gray_img)
+        scaled_rgb = cv2.cvtColor(gray_img, cv2.COLOR_GRAY2RGB)
+
+        img = Image.fromarray(scaled_rgb)
+        return np.asarray(img)
+
+    def __getitem__(self, index):
+        filename = self.filenames[index]
+        img_path = TBX11K_IMG_DIR / filename
+        x = self.read_from_png(img_path)
+
+        mask = np.zeros([512, 512])
+
+        bbox = np.array(self.bboxs[index])
+        new_bbox = bbox.astype(np.int64)
+        if len(new_bbox) > 0:
+            for i in range(len(new_bbox)):
+                try:
+                    mask[new_bbox[i, 1]:new_bbox[i, 3],
+                         new_bbox[i, 0]:new_bbox[i, 2]] += 1
+                except:
+                    import ipdb
+                    ipdb.set_trace()
+        mask = (mask >= 1).astype("float32")
+        mask = resize_img(mask, self.imsize) # this will impact the vis of the mask, but not change the input since it will be resized again in the transform
+        
+        # ### for checking the masked img, need to comment out the resize mask operation above first
+        # reversed_mask = np.where(mask == 0, 1, 0)
+        # masked_img = x * reversed_mask[:, :, np.newaxis]
+        # plt.figure(figsize=(10, 5))
+        # plt.subplot(1,2,1)
+        # plt.title("Original Image")
+        # plt.imshow(x)
+        # plt.axis('off')
+        # plt.subplot(1, 2, 2)
+        # plt.title("Masked Image")
+        # plt.imshow(masked_img)
+        # plt.axis('off')
+        # plt.show()
+
+        augmented = self.seg_transform(image=x, mask=mask)
+
+        x = augmented["image"]
+        y = augmented["mask"].squeeze()
+
+        print("hhhhh1:", x.mean(), x.std(), x.min(), x.max())
+        print("hhhhh2:", y.mean(), y.std(), y.min(), y.max())
+
+        # ### for checking the masked img
+        # reversed_mask = np.where(y == 0, 1, 0)
+        # masked_img = x * reversed_mask[np.newaxis,:, :]
+        # plt.figure(figsize=(10, 5))
+        # plt.subplot(1,2,1)
+        # plt.title("Original Image")
+        # plt.imshow(np.transpose(x,(1,2,0)))
+        # plt.axis('off')
+        # plt.subplot(1, 2, 2)
+        # plt.title("Masked Image")
+        # plt.imshow(np.transpose(masked_img,(1,2,0)))
+        # plt.axis('off')
+        # plt.show()
 
         return x, y
 
