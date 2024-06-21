@@ -148,3 +148,5 @@ out/*
 *.csv
 
 .idea/
+data/
+cached_file/
