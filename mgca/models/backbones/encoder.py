@@ -162,16 +162,23 @@ class BertEncoder(nn.Module):
 
         self.config = BertConfig.from_json_file(
             os.path.join(BASE_DIR, "../../configs/bert_config.json"))
+        # self.model = BertModel.from_pretrained(
+        #     self.bert_type,
+        #     config=self.config,
+        #     add_pooling_layer=False,
+        # )
         self.model = BertModel.from_pretrained(
-            self.bert_type,
+            "../../../cached_file/Bio_ClinicalBERT",
             config=self.config,
             add_pooling_layer=False,
         )
 
+
         if tokenizer:
             self.tokenizer = tokenizer
         else:
-            self.tokenizer = AutoTokenizer.from_pretrained(self.bert_type)
+            # self.tokenizer = AutoTokenizer.from_pretrained(self.bert_type)
+            self.tokenizer = AutoTokenizer.from_pretrained("../../../cached_file/Bio_ClinicalBERT")
 
         self.idxtoword = {v: k for k, v in self.tokenizer.get_vocab().items()}
 

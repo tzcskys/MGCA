@@ -12,10 +12,10 @@ from pytorch_lightning.loggers import WandbLogger
 
 from mgca.datasets.data_module import DataModule
 from mgca.datasets.segmentation_dataset import (RSNASegmentDataset,
-                                                SIIMImageDataset)
-from mgca.models.backbones.transformer_seg import SETRModel
-from mgca.models.mgca.mgca_module import MGCA
+                                                SIIMImageDataset, TBX11KSegmentDataset)
+from mgca.models.backbones.transformer_seg import SETRModel, SETRModel_deep
 from mgca.models.ssl_segmenter import SSLSegmenter
+from mgca.models.mrm.mrm_module import MRM
 
 import re
 import hashlib
@@ -25,6 +25,9 @@ from tqdm import tqdm
 import torch.nn.functional as F
 from torch import nn
 from collections import OrderedDict
+
+# disable wandb sync to cloud
+os.environ['WANDB_DISABLED'] = 'true'
 
 torch.autograd.set_detect_anomaly(True)
 torch.backends.cudnn.deterministic = True
@@ -268,7 +271,7 @@ def cli_main():
     parser.add_argument("--base_model", type=str,
                         default="vit", help="resnet50 or vit")
     # parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/vit_base.ckpt")
-    parser.add_argument("--ckpt_path", type=str, default="/mnt/Research/mingjian/results/pre_trained_model/mgca/11.007858_13_605046.pth")
+    parser.add_argument("--ckpt_path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/11.090995_18_724479.pth")
     parser.add_argument("--dataset", type=str, default="siim")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=8)
@@ -293,9 +296,10 @@ def cli_main():
         datamodule = DataModule(RSNASegmentDataset, None,
                                 None, args.data_pct,
                                 args.batch_size, args.num_workers)
-
-    # mgca = MGCA.load_from_checkpoint(args.ckpt_path)
-    # encoder = mgca.img_encoder_q.model
+    elif args.dataset == "tbx11k":
+        datamodule = DataModule(TBX11KSegmentDataset, None,
+                                None, args.data_pct,
+                                args.batch_size, args.num_workers)
 
     model_gloria = build_model("ViT-B/16")
 
@@ -309,7 +313,16 @@ def cli_main():
 
 
     if args.base_model == "vit":
-        args.seg_model = SETRModel(
+        # args.seg_model = SETRModel(
+        #     patch_size=(16, 16),
+        #     in_channels=3,
+        #     out_channels=1,
+        #     hidden_size=768,
+        #     num_hidden_layers=12,
+        #     num_attention_heads=12,
+        #     decode_features=[512, 256, 128, 64]
+        # )
+        args.seg_model = SETRModel_deep(
             patch_size=(16, 16),
             in_channels=3,
             out_channels=1,
@@ -318,6 +331,7 @@ def cli_main():
             num_attention_heads=12,
             decode_features=[512, 256, 128, 64]
         )
+
         args.seg_model.encoder_2d.bert_model = model_gloria
 
         for param in args.seg_model.encoder_2d.bert_model.parameters():
@@ -358,7 +372,7 @@ def cli_main():
         ModelCheckpoint(monitor="val_loss", dirpath=ckpt_dir,
                         save_last=True, mode="min", save_top_k=5),
         EarlyStopping(monitor="val_loss", min_delta=0.,
-                      patience=10, verbose=False, mode="min")
+                      patience=50, verbose=False, mode="min")
     ]
     logger_dir = os.path.join(
         BASE_DIR, f"../../../data")
@@ -373,6 +387,8 @@ def cli_main():
 
     model.training_steps = model.num_training_steps(trainer, datamodule)
     print(model.training_steps)
+    ## run test before train, to check if the model is loaded correctly
+    trainer.test(model, datamodule=datamodule)
     trainer.fit(model, datamodule=datamodule)
     trainer.test(model, datamodule=datamodule, ckpt_path='best')
 

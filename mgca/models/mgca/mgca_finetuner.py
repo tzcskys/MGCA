@@ -26,15 +26,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 def cli_main():
     parser = ArgumentParser()
     parser.add_argument("--dataset", type=str, default="chexpert")
-    # parser.add_argument("--path", type=str, default="/home/r15user2/Documents/MGCA/checkpoints/mgca/epoch=20-step=33137.ckpt")
-    parser.add_argument("--path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/resnet_50.ckpt")
-    # parser.add_argument("--path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/epoch=28-step=45761.ckpt")
-    # parser.add_argument("--path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/4.922432_10_621951.pth")
-    # parser.add_argument("--path", type=str, default="/mnt/HDD2/mingjian/results/pre_trained_model/mgca/4.959988_13_543701.pth")
+    parser.add_argument("--path", type=str, default="/mnt/Research/mingjian/results/pre_trained_model/mgca/vit_base.ckpt")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=48)
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--data_pct", type=float, default=0.01)
+    parser.add_argument("--learning_rate", type=float, default=5e-4)
     # add trainer args
     parser = Trainer.add_argparse_args(parser)
     args = parser.parse_args()
@@ -117,6 +114,8 @@ def cli_main():
 
     tuner.training_steps = tuner.num_training_steps(trainer, datamodule)
 
+    ## TODO: for debugging, run test before train, remove later
+    trainer.test(tuner, datamodule=datamodule)
     # train
     trainer.fit(tuner, datamodule)
     # test

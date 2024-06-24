@@ -10,6 +10,7 @@ torch.autograd.set_detect_anomaly(True)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = True
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+from cosine_annealing_warmup import CosineAnnealingWarmupRestarts
 
 
 class SSLSegmenter(LightningModule):
@@ -128,13 +129,28 @@ class SSLSegmenter(LightningModule):
             weight_decay=self.hparams.weight_decay
         )
 
+        # lr_scheduler = CosineAnnealingWarmupRestarts(
+        #     optimizer,
+        #     first_cycle_steps=self.training_steps,
+        #     cycle_mult=1.0,
+        #     max_lr=self.hparams.learning_rate,
+        #     min_lr=0.0,
+        #     warmup_steps=0
+        # )
+        # scheduler = {
+        #     "scheduler": lr_scheduler,
+        #     "interval": "step",
+        #     "frequency": 1
+        # }
+        # return {"optimizer": optimizer, "lr_scheduler": scheduler}
+
         return optimizer
 
     @staticmethod
     def num_training_steps(trainer, dm) -> int:
         """Total training steps inferred from datamodule and devices."""
         dataset = dm.train_dataloader()
-        dataset_size = len(dataset)
+        dataset_size = len(dataset) # the real datasize // batch_size
         num_devices = max(1, trainer.num_gpus, trainer.num_processes)
         if trainer.tpu_cores:
             num_devices = max(num_devices, trainer.tpu_cores)

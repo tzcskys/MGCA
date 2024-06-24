@@ -196,6 +196,8 @@ def cli_main():
 
     model.training_steps = model.num_training_steps(trainer, datamodule)
     print(model.training_steps)
+    ## run test before train, to check if the model is loaded correctly
+    trainer.test(model, datamodule=datamodule)
     trainer.fit(model, datamodule=datamodule)
 
 

@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from pytorch_lightning import LightningModule
 from torchmetrics import AUROC, Accuracy
+from cosine_annealing_warmup import CosineAnnealingWarmupRestarts
 
 
 class SSLFineTuner(LightningModule):
@@ -131,7 +132,8 @@ class SSLFineTuner(LightningModule):
         #     cycle_mult=1.0,
         #     max_lr=self.hparams.learning_rate,
         #     min_lr=0.0,
-        #     warmup_steps=int(self.training_steps * 0.4)
+        #     # warmup_steps=int(self.training_steps * 0.4)
+        #     warmup_steps=0
         # )
         # scheduler = {
         #     "scheduler": lr_scheduler,
@@ -176,6 +178,19 @@ class SSLEvaluator(nn.Module):
                 nn.Dropout(p=p),
                 nn.Linear(n_hidden, n_classes)
             )
+
+    #     self.init_weights()
+    #
+    # ## add explicit random init
+    # def init_weights(self):
+    #     for m in self.modules():
+    #         if isinstance(m, nn.Linear):
+    #             nn.init.xavier_uniform_(m.weight)
+    #             if m.bias is not None:
+    #                 nn.init.zeros_(m.bias)
+    #         elif isinstance(m, nn.BatchNorm1d):
+    #             nn.init.ones_(m.weight)
+    #             nn.init.zeros_(m.bias)
 
     def forward(self, x):
         logits = self.block_forward(x)
